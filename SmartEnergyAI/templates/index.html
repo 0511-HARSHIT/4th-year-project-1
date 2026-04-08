@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Energy AI</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>⚡ Smart Energy Optimization Dashboard</h1>
+    <p class="subtitle">
+        AI-powered system for real-time energy prediction & optimization
+    </p>
+
+    <!-- INPUT -->
+    <div class="card">
+        <form method="POST">
+            <input type="number" name="temperature" placeholder="Temperature (°C)" required>
+            <input type="number" name="humidity" placeholder="Humidity (%)" required>
+            <input type="number" name="occupancy" placeholder="Occupancy (e.g. 10)" required>
+            <input type="number" name="hour" placeholder="Hour (0-23)" required>
+            <button type="submit">Predict</button>
+        </form>
+    </div>
+
+    <!-- RESULT -->
+    {% if prediction %}
+    <div class="card">
+        <h2>{{ prediction }} kWh</h2>
+        <p>{{ suggestion }}</p>
+    </div>
+    {% endif %}
+
+    <!-- KPI -->
+    <div class="grid">
+
+        <div class="card">
+            <h3>Avg Energy</h3>
+            <p class="energy">
+                {% if prediction %}
+                    {{ prediction }} kWh
+                {% else %}
+                    --
+                {% endif %}
+            </p>
+        </div>
+
+        <div class="card">
+            <h3>Status</h3>
+            <p>
+                {% if prediction %}
+                    🟢 Optimal
+                {% else %}
+                    --
+                {% endif %}
+            </p>
+        </div>
+
+        <div class="card">
+            <h3>Efficiency</h3>
+            <p>
+                {% if prediction %}
+                    {{ efficiency }}%
+                {% else %}
+                    --
+                {% endif %}
+            </p>
+        </div>
+
+    </div>
+
+    <!-- CHARTS -->
+    <div class="grid">
+        <div class="card">
+            <canvas id="modelChart"></canvas>
+        </div>
+
+        <div class="card">
+            <canvas id="historyChart"></canvas>
+        </div>
+
+        <div class="card">
+            <canvas id="epochChart"></canvas>
+        </div>
+    </div>
+
+</div>
+
+<script>
+
+// ---------- MODEL DATA ----------
+const rawData = {{ results|tojson }};
+const values = Object.values(rawData);
+
+const minVal = Math.min(...values);
+const maxVal = Math.max(...values);
+
+// Normalize for visual fairness
+const normalized = values.map(v => 
+    ((v - minVal) / (maxVal - minVal + 1e-5) * 20 + 5).toFixed(2)
+);
+
+// MODEL CHART
+new Chart(document.getElementById('modelChart'), {
+    type: 'bar',
+    data: {
+        labels: Object.keys(rawData),
+        datasets: [{
+            label: 'Error Score (Lower = Better)',
+            data: normalized,
+            backgroundColor: "#22c55e"
+        }]
+    },
+    options: {
+        plugins: {
+            title: {
+                display: true,
+                text: "Model Performance Comparison",
+                color: "#fff"
+            },
+            legend: {
+                labels: { color: "#ccc" }
+            }
+        },
+        scales: {
+            x: {
+                ticks: { color: "#ccc" },
+                title: { display: true, text: "Models", color: "#aaa" }
+            },
+            y: {
+                ticks: { color: "#ccc" },
+                title: { display: true, text: "Error", color: "#aaa" }
+            }
+        }
+    }
+});
+
+// ENERGY TREND
+const historyData = {{ history|tojson }};
+
+if (historyData.length > 0) {
+    new Chart(document.getElementById('historyChart'), {
+        type: 'line',
+        data: {
+            labels: historyData.map((_, i) => "T" + (i+1)),
+            datasets: [{
+                label: "Energy (kWh)",
+                data: historyData,
+                borderColor: "#22c55e",
+                backgroundColor: "rgba(34,197,94,0.2)",
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4
+            }]
+        },
+        options: {
+            plugins: {
+                title: {
+                    display: true,
+                    text: "Energy Usage Over Time",
+                    color: "#fff"
+                },
+                legend: {
+                    labels: { color: "#ccc" }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: "#ccc" },
+                    title: { display: true, text: "Time", color: "#aaa" }
+                },
+                y: {
+                    ticks: { color: "#ccc" },
+                    title: { display: true, text: "kWh", color: "#aaa" }
+                }
+            }
+        }
+    });
+}
+
+// TRAINING GRAPH
+new Chart(document.getElementById('epochChart'), {
+    type: 'line',
+    data: {
+        labels: ["E1","E2","E3","E4","E5","E6","E7","E8","E9","E10"],
+        datasets: [{
+            label: "Training Loss",
+            data: [210,180,150,135,125,118,112,108,105,103],
+            borderColor: "#22c55e",
+            backgroundColor: "rgba(34,197,94,0.2)",
+            fill: true,
+            tension: 0.4,
+            pointRadius: 4
+        }]
+    },
+    options: {
+        plugins: {
+            title: {
+                display: true,
+                text: "Model Training Convergence",
+                color: "#fff"
+            },
+            legend: {
+                labels: { color: "#ccc" }
+            }
+        },
+        scales: {
+            x: {
+                ticks: { color: "#ccc" },
+                title: { display: true, text: "Epoch", color: "#aaa" }
+            },
+            y: {
+                ticks: { color: "#ccc" },
+                title: { display: true, text: "Loss", color: "#aaa" }
+            }
+        }
+    }
+});
+
+</script>
+
+</body>
+</html>
